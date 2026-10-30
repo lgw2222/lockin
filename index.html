@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0E1626">
+<title>Lock-In Coach</title>
+<link rel="manifest" href="lockin.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0E1626; --court:#16213A; --court2:#1C2946; --line:#283656; --text:#EAF0FA; --muted:#8E9CB8;
+  --lock:#3BE0B0; --pass:#F7B84B; --live:#FF7A59; --warn:#FF5D6C; --info:#7FA8FF;
+  --cond:'Barlow Condensed','Arial Narrow',Arial,sans-serif; --body:'Barlow',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--ink);color:var(--text);font:400 16px/1.45 var(--body);-webkit-tap-highlight-color:transparent;
+  padding:env(safe-area-inset-top,0px) 0 calc(76px + env(safe-area-inset-bottom,0px))}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--info);outline-offset:2px}
+.wrap{max-width:760px;margin:0 auto;padding:0 14px}
+/* scoreboard */
+.board{padding-top:14px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+.lg{display:flex;align-items:center;justify-content:space-between;gap:8px;color:var(--muted);font-size:14px}
+.lg b{font:700 17px var(--cond);color:var(--text);letter-spacing:.2px}
+.refresh{background:none;border:1px solid var(--line);border-radius:20px;padding:4px 12px;font-size:13px;color:var(--muted)}
+.score{display:grid;grid-template-columns:1fr auto 1fr;align-items:end;margin-top:12px;gap:8px}
+.side{min-width:0}
+.side.r{text-align:right}
+.side .id{display:flex;align-items:center;gap:8px;min-width:0}
+.side.r .id{flex-direction:row-reverse}
+.side .pts{display:block;margin-top:6px}
+.av{width:32px;height:32px;border-radius:50%;background:var(--court2);flex:none;object-fit:cover}
+.tn{font:700 18px/1.1 var(--cond);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rec{font-size:13px;color:var(--muted)}
+.pts{font:800 38px/1 var(--cond);font-variant-numeric:tabular-nums}
+.vs{font:600 14px var(--cond);color:var(--muted);padding:0 2px 6px}
+.wk{margin-top:10px;font-size:14px;color:var(--muted)}
+/* tabs */
+nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--court);border-top:1px solid var(--line);
+  padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px));display:flex;justify-content:center}
+nav.tabs .in{display:flex;max-width:760px;width:100%}
+nav.tabs button{white-space:nowrap;flex:1;background:none;border:0;padding:8px 2px;font:600 15px var(--cond);color:var(--muted);border-radius:10px;letter-spacing:.3px}
+nav.tabs button[aria-selected=true]{color:var(--text);background:var(--court2)}
+nav.tabs .dot{display:inline-block;min-width:18px;padding:0 5px;border-radius:9px;background:var(--lock);color:#06251C;font-size:12px;margin-left:4px}
+/* section heads */
+h2{font:700 22px/1.2 var(--cond);margin:22px 0 10px;letter-spacing:.2px}
+.sub{color:var(--muted);font-size:14px;margin:-6px 0 12px}
+/* decision cards */
+.card{background:var(--court);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px;position:relative;cursor:pointer}
+.card[data-s=lock]{border-left:5px solid var(--lock)}
+.card[data-s=pass]{border-left:5px solid var(--pass)}
+.card[data-s=live]{border-left:5px solid var(--live)}
+.card[data-s=warn]{border-left:5px solid var(--warn)}
+.top{display:flex;gap:12px;align-items:center}
+.hs{width:52px;height:40px;object-fit:cover;object-position:top;border-radius:8px;background:var(--court2);flex:none}
+.who{flex:1;min-width:0}
+.nm{font:700 20px/1.1 var(--cond);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.meta{font-size:13px;color:var(--muted)}
+.inj{color:var(--warn);font-weight:600}
+.chip{font:700 15px var(--cond);padding:5px 11px;border-radius:8px;white-space:nowrap;letter-spacing:.3px}
+.c-lock{background:var(--lock);color:#05271D}
+.c-pass{background:var(--pass);color:#2E1D00}
+.c-live{background:var(--live);color:#2B0C02}
+.c-warn{background:var(--warn);color:#2A0308}
+.c-dim{background:var(--court2);color:var(--muted)}
+.c-done{background:transparent;border:1px solid var(--lock);color:var(--lock)}
+.mid{display:flex;align-items:flex-end;justify-content:space-between;margin:12px 0 4px;gap:10px}
+.big{font:800 46px/0.9 var(--cond);font-variant-numeric:tabular-nums}
+.big small{font:600 15px var(--cond);color:var(--muted);margin-left:4px}
+.ctx{text-align:right;font-size:14px;color:var(--muted)}
+.ctx b{color:var(--text);font-weight:600}
+.meter{display:block;width:100%;height:auto;margin:6px 0 2px}
+.why{font-size:15px;margin:8px 0 0}
+.why b{font-weight:600}
+.left{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.g{font-size:13px;background:var(--court2);border-radius:6px;padding:3px 8px;color:var(--muted)}
+.g.b2b{color:var(--pass)}
+.g.live{color:var(--live)}
+.dl{display:flex;justify-content:space-between;align-items:center;margin-top:12px;gap:10px;font-size:14px}
+.dl .t{color:var(--muted)}
+.dl .t b{color:var(--text)}
+.btn{white-space:nowrap;background:var(--court2);border:1px solid var(--line);border-radius:9px;padding:7px 12px;font:600 15px var(--cond);letter-spacing:.3px}
+.btn.pri{background:var(--lock);color:#05271D;border-color:var(--lock)}
+.empty{padding:28px 18px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:14px}
+.err{background:#3A1520;border:1px solid var(--warn);color:#FFD6DB;border-radius:12px;padding:12px 14px;margin:14px 0}
+.note{background:var(--court);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:12px 0;font-size:14px;color:var(--muted)}
+.note b{color:var(--text)}
+/* roster table */
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:12px}
+table{border-collapse:collapse;width:100%;font-size:14px;font-variant-numeric:tabular-nums}
+th,td{padding:9px 8px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--line)}
+th{font:600 13px var(--cond);color:var(--muted);letter-spacing:.3px;background:var(--court)}
+td:first-child,th:first-child{text-align:left;position:sticky;left:0;background:var(--ink)}
+th:first-child{background:var(--court)}
+tr.bench td{color:var(--muted)}
+tr:last-child td{border-bottom:0}
+.lnk{background:none;border:0;padding:0;font-weight:600;color:var(--text);text-align:left}
+/* sheet */
+.sheet{position:fixed;inset:0;z-index:40;background:rgba(5,9,18,.72);display:none;align-items:flex-end;justify-content:center}
+.sheet.on{display:flex}
+.panel{background:var(--ink);border:1px solid var(--line);border-bottom:0;border-radius:18px 18px 0 0;width:100%;max-width:760px;
+  max-height:92vh;overflow-y:auto;padding:16px 16px calc(20px + env(safe-area-inset-bottom,0px));animation:up .22s ease-out}
+@keyframes up{from{transform:translateY(30px);opacity:.4}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){.panel{animation:none}}
+.close{float:right;background:var(--court2);border:0;border-radius:50%;width:34px;height:34px;font-size:18px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0}
+.st{background:var(--court);border-radius:10px;padding:10px}
+.st .v{font:700 24px/1 var(--cond);font-variant-numeric:tabular-nums}
+.st .k{font-size:12px;color:var(--muted);margin-top:4px}
+.chart{display:block;width:100%;height:auto}
+.legend{font-size:13px;color:var(--muted);margin:4px 0 0}
+.seg{display:flex;background:var(--court);border:1px solid var(--line);border-radius:10px;padding:3px;gap:3px}
+.seg button{flex:1;border:0;background:none;padding:8px 4px;border-radius:8px;font:600 15px var(--cond);color:var(--muted)}
+.seg button[aria-pressed=true]{background:var(--court2);color:var(--text)}
+label.f{display:block;margin:14px 0 6px;font-weight:600;font-size:15px}
+.in{width:100%;background:var(--court);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
+.row p{margin:2px 0 0;font-size:13px;color:var(--muted)}
+.sw{width:50px;height:30px;border-radius:15px;background:var(--court2);border:1px solid var(--line);position:relative;flex:none}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:var(--muted);transition:left .15s}
+.sw[aria-checked=true]{background:var(--lock);border-color:var(--lock)}
+.sw[aria-checked=true]::after{left:23px;background:#05271D}
+.alog{list-style:none;margin:0;padding:0}
+.alog li{border-bottom:1px solid var(--line);padding:11px 0}
+.alog .at{font-weight:600}
+.alog .ab{font-size:14px;color:var(--muted);margin-top:2px}
+.alog .when{font-size:12px;color:var(--muted)}
+.toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:50;
+  background:var(--court2);border:1px solid var(--line);border-radius:12px;padding:10px 14px;max-width:92vw;font-size:14px;display:none}
+.spin{display:inline-block;width:14px;height:14px;border:2px solid var(--muted);border-top-color:transparent;border-radius:50%;animation:sp 0.8s linear infinite;vertical-align:-2px}
+@keyframes sp{to{transform:rotate(360deg)}}
+code{background:var(--court2);padding:1px 5px;border-radius:5px;font-size:13px}
+</style>
+</head>
+<body>
+<header class="wrap board" id="board">
+  <div class="lg"><b id="lgName">Lock-In Coach</b><button class="refresh" id="refreshBtn" onclick="refresh(true)">Refresh</button></div>
+  <div class="score" id="score"></div>
+  <div class="wk" id="wkLine"></div>
+</header>
+<main class="wrap" id="main"><div class="empty" style="margin-top:20px"><span class="spin"></span> Loading your team…</div></main>
+<nav class="tabs" aria-label="Sections"><div class="in" role="tablist">
+  <button role="tab" data-t="decide" aria-selected="true" onclick="tab('decide')">Lock-ins<span id="lockDot"></span></button>
+  <button role="tab" data-t="roster" aria-selected="false" onclick="tab('roster')">Roster</button>
+  <button role="tab" data-t="alerts" aria-selected="false" onclick="tab('alerts')">Alerts</button>
+  <button role="tab" data-t="settings" aria-selected="false" onclick="tab('settings')">Settings</button>
+</div></nav>
+<div class="sheet" id="sheet" onclick="if(event.target===this)closeSheet()"><div class="panel" id="panel" role="dialog" aria-modal="true"></div></div>
+<div class="toast" id="toast" role="status"></div>
+<script src="core.js"></script>
+<script>
+'use strict';
+const C = window.LockCore;
+const DEF = { leagueId: '1416329086271320064', username: 'lgw2', risk: 'balanced', ddStack: true, notify: false };
+const ls = { get(k){ try{ return JSON.parse(localStorage.getItem('lockin_'+k)); }catch(e){ return null; } },
+             set(k,v){ try{ localStorage.setItem('lockin_'+k, JSON.stringify(v)); }catch(e){} } };
+let CFG = Object.assign({}, DEF, ls.get('cfg') || {});
+let D = null, ERR = '', T = 'decide', busy = false, timer = null;
+const cache = { get: k => ls.get('c_'+k), set: (k, v) => ls.set('c_'+k, v) };
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const f1 = C.f1, $ = s => document.querySelector(s);
+const DAY = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const dname = d => DAY[new Date(+d.slice(0,4), +d.slice(4,6)-1, +d.slice(6)).getDay()];
+const md = d => (+d.slice(4,6)) + '/' + (+d.slice(6));
+const tm = ms => new Date(ms).toLocaleString('en-US', { weekday:'short', hour:'numeric', minute:'2-digit' });
+function until(ms){ const m = Math.round((ms - Date.now())/6e4); if (m <= 0) return 'now'; if (m < 60) return m+'m'; const h = Math.floor(m/60);
+  return h < 24 ? `${h}h ${m%60}m` : `${Math.floor(h/24)}d ${h%24}h`; }
+const avatar = a => a ? `https://sleepercdn.com/avatars/thumbs/${a}` : '';
+const head = id => id ? `https://a.espncdn.com/combiner/i?img=/i/headshots/nba/players/full/${id}.png&w=104&h=80` : '';
+function toast(t){ const el = $('#toast'); el.textContent = t; el.style.display = 'block'; clearTimeout(el._t); el._t = setTimeout(()=>el.style.display='none', 3500); }
+function saveCfg(){ ls.set('cfg', CFG); }
+
+/* locks: yours (tapped here) + ones spotted from Sleeper's score */
+function lockMap(){ const mine = (ls.get('locks')||{})[D.week] || {}; return Object.assign({}, D.inferredLocks, mine); }
+function setLock(sid, on){
+  const all = ls.get('locks') || {}, w = all[D.week] = all[D.week] || {};
+  const p = D.players.find(x => x.sid === sid);
+  if (on) w[sid] = { fp: p.a.score, date: p.a.cand && p.a.cand.date, by: 'me' }; else delete w[sid];
+  ls.set('locks', all); analyzeAll(); render(); toast(on ? `Marked ${p.name} locked at ${f1(p.a.score)}.` : `Unmarked ${p.name}.`);
+}
+function analyzeAll(){ const ctx = { risk: CFG.risk, locks: lockMap() }; D.players.forEach(p => p.a = C.analyze(p, ctx)); }
+
+async function refresh(manual){
+  if (busy) return; busy = true; $('#refreshBtn').innerHTML = '<span class="spin"></span>';
+  try {
+    D = await C.load(CFG, cache); ERR = '';
+    analyzeAll(); checkAlerts();
+  } catch (e) { ERR = e.message || String(e); }
+  busy = false; $('#refreshBtn').textContent = 'Refresh';
+  render(); schedule();
+  if (manual && !ERR) toast('Updated.');
+}
+function schedule(){
+  clearTimeout(timer);
+  let ms = 10*6e4;
+  if (D){ const soon = D.players.some(p => p.week.some(g => g.state === 'in' || (g.state === 'pre' && g.start - Date.now() < 3*36e5 && g.start > Date.now() - 36e5)));
+    if (soon) ms = 2*6e4; }
+  timer = setTimeout(() => refresh(false), ms);
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden && D && Date.now() - D.loadedAt > 2*6e4) refresh(false); });
+
+/* alerts */
+async function checkAlerts(){
+  const sent = ls.get('sent'), first = !sent, seen = new Set(sent || []), log = ls.get('log') || [];
+  const list = C.alertsFor(D, { risk: CFG.risk, locks: lockMap() });
+  const fresh = list.filter(a => !seen.has(a.key));
+  fresh.forEach(a => { seen.add(a.key); log.unshift({ ...a, t: Date.now() }); });
+  ls.set('sent', [...seen].slice(-400)); ls.set('log', log.slice(0, 120));
+  if (first || !fresh.length) return;
+  toast(fresh[0].title);
+  if (CFG.notify && 'Notification' in window && Notification.permission === 'granted' && navigator.serviceWorker){
+    const reg = await navigator.serviceWorker.ready.catch(() => null);
+    if (reg) fresh.forEach(a => reg.showNotification(a.title, { body: a.body, tag: a.key, icon: 'icon-192.png', badge: 'icon-192.png' }));
+  }
+}
+async function toggleNotify(){
+  if (!CFG.notify){
+    if (!('Notification' in window) || !navigator.serviceWorker) return toast('This browser can\u2019t show notifications.');
+    const p = await Notification.requestPermission();
+    if (p !== 'granted') return toast('Notifications are blocked for this site. Allow them in Chrome\u2019s site settings.');
+    CFG.notify = true;
+  } else CFG.notify = false;
+  saveCfg(); render();
+}
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+
+/* ---------- rendering ---------- */
+function tab(t){ T = t; document.querySelectorAll('nav.tabs button').forEach(b => b.setAttribute('aria-selected', b.dataset.t === t)); render(); window.scrollTo(0,0); }
+function render(){
+  renderBoard();
+  const m = $('#main');
+  if (T === 'settings') return m.innerHTML = settingsView();
+  if (T === 'alerts') return m.innerHTML = alertsView();
+  if (ERR && !D) return m.innerHTML = `<div class="err"><b>Couldn\u2019t load your league.</b><br>${esc(ERR)}</div><button class="btn" onclick="tab('settings')">Open settings</button>`;
+  if (!D) return;
+  m.innerHTML = (ERR ? `<div class="err">Last update failed: ${esc(ERR)}. Showing the previous numbers.</div>` : '') + (T === 'roster' ? rosterView() : decideView());
+}
+function renderBoard(){
+  const n = (ls.get('locks')||{}); const dot = D ? D.players.filter(p => p.starter && p.a && p.a.status === 'lock').length : 0;
+  $('#lockDot').innerHTML = dot ? `<span class="dot">${dot}</span>` : '';
+  if (!D) return;
+  $('#lgName').textContent = D.league.name;
+  const side = (x, r) => x ? `<div class="side${r?' r':''}"><div class="id">${x.avatar?`<img class="av" alt="" src="${avatar(x.avatar)}">`:'<span class="av"></span>'}<div style="min-width:0"><div class="tn">${esc(x.name)}</div><div class="rec">${esc(x.record)}</div></div></div><span class="pts">${f1(x.points)}</span></div>` : '<div></div>';
+  $('#score').innerHTML = `${side(D.me)}<div class="vs">vs</div>${side(D.opp,1)}`;
+  const s = D.days[0], e = D.days[6];
+  $('#wkLine').textContent = `Week ${D.week} · ${md(s)}–${md(e)} · updated ${new Date(D.loadedAt).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}`;
+}
+
+const STAT = {
+  lock:    a => [a.strength==='strong'?'Lock it':'Lean lock', 'c-lock', 'lock'],
+  pass:    a => [a.strength==='strong'||(a.cand&&a.cand.dnp)?'Pass':'Lean pass', 'c-pass', 'pass'],
+  decide:  a => ['Your call', 'c-dim', ''],
+  live:    a => ['Live', 'c-live', 'live'],
+  waiting: a => ['No game yet', 'c-dim', ''],
+  final:   a => ['Counts', 'c-dim', ''],
+  locked:  a => ['Locked', 'c-done', ''],
+  nogames: a => ['No games', 'c-warn', 'warn']
+};
+const order = { lock:0, live:1, pass:2, decide:2, nogames:3, waiting:4, final:5, locked:6 };
+
+function meter(p){
+  const a = p.a, S = a.sample; if (!S) return '';
+  const vals = S.pts.map(x => x.v), max = Math.max(10, ...vals, a.score||0, a.passValue||0) * 1.08;
+  const W = 320, H = 46, X = v => 8 + (W-16) * Math.max(0, v) / max;
+  let s = `<svg class="meter" viewBox="0 0 ${W} ${H}" role="img" aria-label="Tonight's score compared with his past games">`;
+  if (a.passValue != null){
+    s += `<rect x="8" y="14" width="${X(a.passValue)-8}" height="14" rx="3" fill="var(--pass)" opacity=".16"/><rect x="${X(a.passValue)}" y="14" width="${W-8-X(a.passValue)}" height="14" rx="3" fill="var(--lock)" opacity=".16"/>`;
+  } else s += `<rect x="8" y="14" width="${W-16}" height="14" rx="3" fill="var(--court2)"/>`;
+  S.pts.forEach(x => s += `<line x1="${X(x.v)}" x2="${X(x.v)}" y1="16" y2="26" stroke="var(--muted)" stroke-width="1.5" opacity="${x.w>=1?.65:.3}"/>`);
+  if (a.passValue != null) s += `<line x1="${X(a.passValue)}" x2="${X(a.passValue)}" y1="8" y2="34" stroke="var(--text)" stroke-dasharray="3 3" stroke-width="1.5"/><text x="${X(a.passValue)}" y="44" fill="var(--muted)" font-size="11" text-anchor="${X(a.passValue)<60?'start':X(a.passValue)>W-60?'end':'middle'}" font-family="Barlow">pass value ${f1(a.passValue)}</text>`;
+  if (a.score != null && a.status !== 'waiting'){ const col = a.status==='lock'?'var(--lock)':a.status==='live'?'var(--live)':a.status==='pass'?'var(--pass)':'var(--text)';
+    s += `<circle cx="${X(a.score)}" cy="21" r="7" fill="${col}" stroke="var(--ink)" stroke-width="2.5"/>`; }
+  s += `<text x="8" y="9" fill="var(--muted)" font-size="10" font-family="Barlow">0</text><text x="${W-8}" y="9" fill="var(--muted)" font-size="10" text-anchor="end" font-family="Barlow">${Math.round(max)}</text></svg>`;
+  return s;
+}
+function gameChip(g, prev){
+  const b2b = prev && Math.round((new Date(+g.date.slice(0,4),+g.date.slice(4,6)-1,+g.date.slice(6)) - new Date(+prev.date.slice(0,4),+prev.date.slice(4,6)-1,+prev.date.slice(6)))/864e5) === 1;
+  const lab = `${dname(g.date)} ${g.home?'vs':'@'} ${esc(g.opp)}`;
+  if (g.state === 'post') return `<span class="g">${lab} · ${g.dnp?'DNP':f1(g.fp)}</span>`;
+  if (g.state === 'in') return `<span class="g live">${lab} · ${f1(g.fp||0)} live</span>`;
+  return `<span class="g${b2b?' b2b':''}">${lab} ${new Date(g.start).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}${b2b?' · back-to-back':''}</span>`;
+}
+function card(p){
+  const a = p.a, [lab, cls, ds] = (STAT[a.status]||STAT.decide)(a);
+  const dsAttr = (/out|doubt/i.test(p.injury||'') && !['locked','final'].includes(a.status) && a.status!=='lock') ? 'warn' : ds;
+  const games = p.week.map((g,i) => gameChip(g, i ? p.week[i-1] : null)).join('');
+  let big = '', ctx = '', why = '', dl = '';
+  if (a.status === 'waiting'){
+    big = a.expectedWeek != null ? `${f1(a.expectedWeek)}<small>expected</small>` : '–';
+    ctx = `${p.week.length} game${p.week.length>1?'s':''} this week<br>first: <b>${tm(p.week[0].start)}</b>`;
+    why = a.stats ? `Averaging <b>${f1(a.stats.avg)}</b> this season (last 5: ${f1(a.stats.l5)}). The more games he has, the pickier you can be.` : 'No games yet this season to go on.';
+  } else if (a.status === 'nogames'){
+    big = '0'; why = 'His team doesn\u2019t play this week. Swap him for a bench player who does.';
+  } else if (a.status === 'locked'){
+    big = `${f1(a.score)}<small>locked</small>`; why = a.lockedBy === 'sleeper' ? 'Sleeper\u2019s score stayed on an earlier game, so it looks locked in the app.' : 'You marked this as locked.';
+  } else if (a.status === 'live'){
+    big = `${f1(a.score)}<small>so far</small>`; ctx = `<b>${esc(a.live.detail)}</b><br>${a.live.home?'vs':'@'} ${esc(a.live.opp)}`;
+    why = a.autoCounts ? 'This is his last game of the week, so whatever he finishes with counts (unless you locked an earlier one).' :
+      (a.pct != null ? `Already ${C.ord(a.pct)} percentile for him${a.passValue!=null?`; the lock line after this game is about <b>${f1(a.passValue)}</b>`:''}. You\u2019ll get a call when it ends.` : 'Lock decision comes when the game ends.');
+  } else if (a.status === 'final'){
+    big = `${f1(a.score)}<small>counts</small>`; ctx = a.cand ? `${a.cand.home?'vs':'@'} ${esc(a.cand.opp)}<br>${esc(a.cand.result)}` : '';
+    why = 'That was his last game of the week, so it counts automatically if you didn\u2019t lock an earlier one.';
+  } else {
+    const c = a.cand; big = `${f1(a.score)}<small>pts</small>`;
+    ctx = `${c.home?'vs':'@'} ${esc(c.opp)} · ${dname(c.date)}<br>${c.dnp?'<b>Did not play</b>':esc(c.result)}`;
+    if (a.passValue != null){
+      const odds = Math.round(a.beat*100), g = `${a.restCount} game${a.restCount>1?'s':''} left`;
+      why = a.status === 'lock'
+        ? `<b>${lab}.</b> ${f1(a.score)} beats what he\u2019s expected to end with if you pass (<b>${f1(a.passValue)}</b>, ${g}). ${odds<3?'Almost no':'Only a '+odds+'%'} chance a later game tops it.`
+        : `<b>${lab}.</b> If you pass, you should end up around <b>${f1(a.passValue)}</b> (${g}), with a ${odds}% chance a later game beats ${f1(a.score)}.`;
+      if (a.pct != null && !c.dnp) why += ` This game was his ${C.ord(a.pct)} percentile.`;
+      if (a.b2b) why += ' Heads up: there\u2019s a back-to-back coming.';
+      if (/out|doubt|quest/i.test(p.injury||'')) why += ` He\u2019s listed <b>${esc(p.injury)}</b>, which drags the pass value down.`;
+    } else why = esc(a.note || '');
+    dl = `<div class="dl"><span class="t">Lock by <b>${tm(a.deadline)}</b> (${until(a.deadline)})</span><button class="btn${a.status==='lock'?' pri':''}" onclick="event.stopPropagation();setLock('${p.sid}',true)">I locked it</button></div>`;
+  }
+  if (a.status === 'locked' && a.lockedBy === 'me') dl = `<div class="dl"><span class="t"></span><button class="btn" onclick="event.stopPropagation();setLock('${p.sid}',false)">Undo</button></div>`;
+  return `<article class="card" data-s="${dsAttr}" onclick="openPlayer('${p.sid}')">
+    <div class="top">${p.espnId?`<img class="hs" alt="" loading="lazy" src="${head(p.espnId)}">`:'<span class="hs"></span>'}
+      <div class="who"><div class="nm">${esc(p.name)}</div><div class="meta">${esc(p.pos)} · ${esc(p.team)}${p.injury?` · <span class="inj">${esc(p.injury)}</span>`:''}</div></div>
+      <span class="chip ${cls}">${lab}</span></div>
+    <div class="mid"><div class="big">${big}</div><div class="ctx">${ctx}</div></div>
+    ${['lock','pass','live','decide','final','waiting'].includes(a.status) ? meter(p) : ''}
+    <p class="why">${why}</p>
+    ${games ? `<div class="left">${games}</div>` : ''}${dl}</article>`;
+}
+function swapTips(){
+  const bench = D.players.filter(p => !p.starter && p.a.expectedWeek != null).sort((x,y) => y.a.expectedWeek - x.a.expectedWeek);
+  const need = D.players.filter(p => p.starter && (p.a.status === 'nogames' || (/out/i.test(p.injury||'') && !p.a.cand && p.a.status !== 'locked')));
+  if (!need.length || !bench.length) return '';
+  return `<div class="note"><b>Swap idea:</b> ${need.map(p => esc(p.name)).join(', ')} ${need.length>1?'are':'is'} likely a zero. Best bench option: <b>${esc(bench[0].name)}</b> (${bench[0].week.filter(g=>g.state==='pre').length} games left, about ${f1(bench[0].a.expectedWeek)} expected).</div>`;
+}
+function decideView(){
+  const st = D.players.filter(p => p.starter).sort((x,y) => (order[x.a.status]??9) - (order[y.a.status]??9) || (x.a.deadline||9e15) - (y.a.deadline||9e15));
+  const sc = D.scoringCheck;
+  const chk = sc.checked && sc.matched < sc.checked ? `<div class="note"><b>Scoring check:</b> my numbers matched Sleeper for ${sc.matched} of ${sc.checked} players this week. Advice still works, but scores may be slightly off — see Settings.</div>` : '';
+  if (!st.length) return `<div class="empty" style="margin-top:20px">No starters found for week ${D.week}. Set your lineup in Sleeper, then refresh.</div>`;
+  return `<h2>Lock-in calls</h2><p class="sub">Each game you can lock only before his next game tips. If you never lock, his last game counts — even a zero.</p>${chk}${swapTips()}${st.map(card).join('')}`;
+}
+function rosterView(){
+  const rows = D.players.slice().sort((x,y) => (y.starter - x.starter) || ((y.a.stats||{}).avg||0) - ((x.a.stats||{}).avg||0));
+  const r = p => { const s = p.a.stats || {}, [lab] = (STAT[p.a.status]||STAT.decide)(p.a), left = p.week.filter(g => g.state === 'pre').length;
+    return `<tr class="${p.starter?'':'bench'}"><td><button class="lnk" onclick="openPlayer('${p.sid}')">${esc(p.name)}</button><div class="meta">${p.starter?'Starter':'Bench'} · ${esc(p.team)}${p.injury?` · <span class="inj">${esc(p.injury)}</span>`:''}</div></td>
+      <td>${s.n?f1(s.avg):'–'}</td><td>${s.n?f1(s.l5):'–'}</td><td>${s.n?f1(s.hi):'–'}</td><td>${s.n?f1(s.sd):'–'}</td><td>${left}/${p.week.length}</td><td>${p.a.expectedWeek!=null?f1(p.a.expectedWeek):'–'}</td><td>${p.starter?lab:''}</td></tr>`; };
+  return `<h2>Roster</h2><p class="sub">Season fantasy averages with your league\u2019s scoring. "Swing" is how much his games bounce around — bigger swing, more reason to wait for a big one.</p>
+    <div class="tbl"><table><tr><th>Player</th><th>Avg</th><th>Last 5</th><th>High</th><th>Swing</th><th>Games left</th><th>Week exp.</th><th>Call</th></tr>${rows.map(r).join('')}</table></div>`;
+}
+
+/* player detail */
+function barChart(games, line, mark){
+  if (!games.length) return '<p class="legend">No games yet.</p>';
+  const firstCur = games.findIndex(g => !g.old);
+  const n = games.length, bw = Math.max(8, Math.min(22, 640/n)), W = Math.max(320, n*bw+30), H = 170, max = Math.max(10, ...games.map(g => g.fp)) * 1.1;
+  const Y = v => H - 22 - (H - 34) * v / max;
+  let s = `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Fantasy points by game">`;
+  [0.25,0.5,0.75,1].forEach(f => { const v = max*f/1.1; s += `<line x1="24" x2="${W}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)"/><text x="20" y="${Y(v)+4}" fill="var(--muted)" font-size="10" text-anchor="end" font-family="Barlow">${Math.round(v)}</text>`; });
+  games.forEach((g,i) => { const x = 28 + i*bw, h = Math.max(1, (H-22) - Y(g.fp)), hit = mark && g.id === mark;
+    if (i === firstCur && i > 0) s += `<line x1="${x-2}" x2="${x-2}" y1="8" y2="${H-20}" stroke="var(--muted)" stroke-dasharray="2 3"/>`;
+    s += `<rect x="${x}" y="${Y(g.fp)}" width="${bw-3}" height="${h}" rx="2" opacity="${g.old?.4:1}" fill="${hit?'var(--lock)':g.fp>=line?'var(--info)':'var(--muted)'}"><title>${md(g.date)} ${g.home?'vs':'@'} ${g.opp}: ${f1(g.fp)}</title></rect>`;
+    if (n <= 24 || i % Math.ceil(n/12) === 0) s += `<text x="${x+(bw-3)/2}" y="${H-8}" fill="var(--muted)" font-size="9" text-anchor="middle" font-family="Barlow">${md(g.date)}</text>`; });
+  s += `<line x1="24" x2="${W}" y1="${Y(line)}" y2="${Y(line)}" stroke="var(--pass)" stroke-dasharray="4 3" stroke-width="1.5"/></svg>`;
+  return s;
+}
+function histogram(S){
+  if (!S) return '';
+  const max = Math.max(...S.pts.map(x => x.v)), bin = 5, nb = Math.max(4, Math.ceil((max+0.01)/bin)), c = Array(nb).fill(0);
+  S.pts.forEach(x => c[Math.min(nb-1, Math.floor(Math.max(0,x.v)/bin))] += x.w);
+  const top = Math.max(...c), W = 320, H = 120, bw = (W-10)/nb;
+  let s = `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="How often he scores in each range">`;
+  c.forEach((v,i) => { const h = (H-26)*v/top; s += `<rect x="${5+i*bw}" y="${H-18-h}" width="${bw-3}" height="${h}" rx="2" fill="var(--info)" opacity=".75"/>`;
+    if (i % 2 === 0) s += `<text x="${5+i*bw}" y="${H-5}" fill="var(--muted)" font-size="10" font-family="Barlow">${i*bin}</text>`; });
+  return s + '</svg>';
+}
+function openPlayer(sid){
+  const p = D.players.find(x => x.sid === sid), a = p.a, s = a.stats, ps = a.prevStats;
+  const last10 = p.cur.slice(-10).reverse();
+  const st = (v, k) => `<div class="st"><div class="v">${v}</div><div class="k">${k}</div></div>`;
+  $('#panel').innerHTML = `<button class="close" aria-label="Close" onclick="closeSheet()">×</button>
+    <div class="top">${p.espnId?`<img class="hs" alt="" src="${head(p.espnId)}">`:''}<div class="who"><div class="nm">${esc(p.name)}</div><div class="meta">${esc(p.pos)} · ${esc(p.team)} · ${p.starter?'Starter':'Bench'}${p.injury?` · <span class="inj">${esc(p.injury)}</span>`:''}</div></div></div>
+    <div class="stats">${s ? st(f1(s.avg),'Season avg') + st(f1(s.l5),'Last 5 avg') + st(f1(s.hi),'Season high') + st(f1(s.lo),'Season low') + st(f1(s.sd),'Swing (±)') + st(f1(s.min),'Minutes') : st('–','No games yet')}${ps ? st(f1(ps.avg),'Last season avg') : ''}</div>
+    ${(() => { const old = p.cur.length < 12 ? p.prev.slice(-(16 - p.cur.length)).map(g => ({ ...g, old: true })) : [];
+      return `<h2 style="margin-top:6px">${old.length ? 'Recent games' : 'Every game this season'}</h2>${barChart(old.concat(p.cur), s ? s.avg : (ps ? ps.avg : 0), a.cand && a.cand.id)}
+      <p class="legend">Blue bars beat his ${s ? 'season' : 'last-season'} average (dashed line).${old.length ? ' Faded bars are from last season, left of the dotted line.' : ''}${a.cand ? ' Green is the game you can lock now.' : ''}</p>`; })()}
+    ${a.sample ? `<h2>How often he scores what</h2>${histogram(a.sample)}<p class="legend">Fantasy points per game, in 5-point ranges${ps && (!s || s.n < 20) ? ' — includes last season while this season\u2019s sample is small' : ''}.</p>` : ''}
+    <h2>This week</h2><div class="left">${p.week.map((g,i)=>gameChip(g, i?p.week[i-1]:null)).join('') || '<span class="g">No games</span>'}</div>
+    ${last10.length ? `<h2>Last ${last10.length} games</h2><div class="tbl"><table><tr><th>Game</th><th>MIN</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th><th>3PM</th><th>FP</th></tr>
+      ${last10.map(g => `<tr><td>${md(g.date)} ${g.home?'vs':'@'} ${esc(g.opp)}</td><td>${g.box.MIN}</td><td>${g.box.PTS}</td><td>${g.box.REB}</td><td>${g.box.AST}</td><td>${g.box.STL}</td><td>${g.box.BLK}</td><td>${g.box.TO}</td><td>${g.box.TPM}</td><td><b>${f1(g.fp)}</b></td></tr>`).join('')}</table></div>` : ''}`;
+  $('#sheet').classList.add('on'); document.body.style.overflow = 'hidden';
+}
+function closeSheet(){ $('#sheet').classList.remove('on'); document.body.style.overflow = ''; }
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSheet(); });
+
+function alertsView(){
+  const log = ls.get('log') || [];
+  const supported = 'Notification' in window && 'serviceWorker' in navigator;
+  return `<h2>Alerts</h2>
+    <div class="row"><div><b>Phone notifications</b><p>${supported ? 'While this app is open or installed and running. For alerts when it\u2019s closed, use Discord (below).' : 'Not supported in this browser.'}</p></div>
+      <button class="sw" role="switch" aria-checked="${!!CFG.notify}" aria-label="Phone notifications" onclick="toggleNotify()"></button></div>
+    <div class="note"><b>Alerts when the app is closed:</b> the repo includes a Discord bot that checks every night your guys play and posts lock/pass calls, "on fire" mid-game alerts, injury warnings and 60-minute deadline reminders. Setup is one secret — see PROJECT.md.</div>
+    <h2>Recent</h2>${log.length ? `<ul class="alog">${log.map(a => `<li><div class="at">${esc(a.title)}</div><div class="ab">${esc(a.body)}</div><div class="when">${new Date(a.t).toLocaleString('en-US',{weekday:'short',hour:'numeric',minute:'2-digit'})}</div></li>`).join('')}</ul>` : '<div class="empty">Alerts show up here after your players\u2019 games finish.</div>'}`;
+}
+function settingsView(){
+  const sc = D && D.scoringCheck;
+  const rk = (k, t) => `<button aria-pressed="${CFG.risk===k}" onclick="CFG.risk='${k}';saveCfg();if(D)analyzeAll();render()">${t}</button>`;
+  return `<h2>Settings</h2>
+    <label class="f" for="lid">Sleeper league ID</label><input class="in" id="lid" inputmode="numeric" value="${esc(CFG.leagueId)}">
+    <label class="f" for="un">Your Sleeper username</label><input class="in" id="un" value="${esc(CFG.username)}">
+    <div style="margin-top:12px"><button class="btn pri" onclick="CFG.leagueId=$('#lid').value.trim();CFG.username=$('#un').value.trim();saveCfg();ls.set('sent',null);refresh(true);tab('decide')">Save and reload</button></div>
+    <label class="f">How picky to be</label>
+    <div class="seg">${rk('safe','Play it safe')}${rk('balanced','Balanced')}${rk('gamble','Swing big')}</div>
+    <p class="sub" style="margin-top:8px">Play it safe locks decent games sooner — good when you\u2019re ahead. Swing big waits for monster games — good when you\u2019re behind.</p>
+    <div class="row"><div><b>Triple-double also counts the double-double bonus</b><p>Flip this if the scoring check below doesn\u2019t match Sleeper.</p></div>
+      <button class="sw" role="switch" aria-checked="${!!CFG.ddStack}" aria-label="Stack double-double bonus" onclick="CFG.ddStack=!CFG.ddStack;saveCfg();refresh(true)"></button></div>
+    ${D ? `<h2>Scoring</h2><p class="sub">${D.scoringFromLeague ? 'Read from your league settings.' : 'Couldn\u2019t read league scoring, using a standard guess.'}</p>
+      <div class="tbl"><table><tr><th>Stat</th><th>Points</th></tr>${Object.entries(D.scoring).map(([k,v]) => `<tr><td>${esc(k)}</td><td>${v}</td></tr>`).join('')}</table></div>
+      <h2>Scoring check</h2>${sc.checked ? `<p class="sub">This week, players with one finished game: my score vs Sleeper\u2019s. ${sc.matched}/${sc.checked} match.</p>
+      <div class="tbl"><table><tr><th>Player</th><th>Mine</th><th>Sleeper</th></tr>${sc.rows.map(r => `<tr><td>${esc(r.name)}</td><td>${f1(r.mine)}</td><td>${f1(r.sleeper)}</td></tr>`).join('')}</table></div>` : '<p class="sub">Nothing to compare yet this week.</p>'}` : ''}
+    <div class="row"><div><b>Clear my locks for this week</b><p>Only the ones you marked here.</p></div><button class="btn" onclick="if(D){const l=ls.get('locks')||{};delete l[D.week];ls.set('locks',l);analyzeAll();toast('Cleared.')}">Clear</button></div>`;
+}
+refresh(false);
+</script>
+</body>
+</html>

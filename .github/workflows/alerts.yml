@@ -1,0 +1,24 @@
+name: Lock-in alerts
+on:
+  schedule:
+    # NBA game windows in UTC (covers weekend matinees through West Coast finishes)
+    - cron: '*/30 16-23 * * *'
+    - cron: '*/30 0-5 * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: lockin-alerts
+  cancel-in-progress: false
+jobs:
+  alerts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node scripts/alerts.js
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
